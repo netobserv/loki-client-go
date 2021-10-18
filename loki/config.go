@@ -4,9 +4,9 @@ import (
 	"flag"
 	"time"
 
-	"github.com/grafana/loki-client-go/pkg/backoff"
-	"github.com/grafana/loki-client-go/pkg/labelutil"
-	"github.com/grafana/loki-client-go/pkg/urlutil"
+	"github.com/netobserv/loki-client-go/pkg/backoff"
+	"github.com/netobserv/loki-client-go/pkg/labelutil"
+	"github.com/netobserv/loki-client-go/pkg/urlutil"
 	"github.com/prometheus/common/config"
 )
 
