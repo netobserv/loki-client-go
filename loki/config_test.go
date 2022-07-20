@@ -22,6 +22,8 @@ url: http://localhost:3100/loki/api/v1/push
 
 var clientCustomConfig = `
 url: http://localhost:3100/loki/api/v1/push
+tenant_id: tenant-id
+authorization_header: Bearer XXX
 backoff_config:
   max_retries: 20
   min_period: 5s
@@ -60,6 +62,8 @@ func Test_Config(t *testing.T) {
 				URL: urlutil.URLValue{
 					URL: u,
 				},
+				TenantID:      "tenant-id",
+				Authorization: "Bearer XXX",
 				BackoffConfig: backoff.BackoffConfig{
 					MaxBackoff: 1 * time.Minute,
 					MaxRetries: 20,

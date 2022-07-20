@@ -336,6 +336,11 @@ func (c *Client) send(ctx context.Context, tenantID string, buf []byte) (int, er
 		req.Header.Set("X-Scope-OrgID", tenantID)
 	}
 
+	// Authorization header to send if you are using a gateway like https://github.com/observatorium/api for example
+	if c.cfg.Authorization != "" {
+		req.Header.Set("Authorization", c.cfg.Authorization)
+	}
+
 	resp, err := c.client.Do(req)
 	if err != nil {
 		return -1, err

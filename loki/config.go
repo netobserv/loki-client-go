@@ -37,6 +37,9 @@ type Config struct {
 	// single tenant mode)
 	TenantID string `yaml:"tenant_id"`
 
+	// The authorization header to send to Loki gateway
+	Authorization string `yaml:"authorization_header"`
+
 	// Use Loki JSON api as opposed to the snappy protobuf.
 	EncodeJson bool `yaml:"encode_json"`
 }
