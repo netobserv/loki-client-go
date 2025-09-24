@@ -18,8 +18,6 @@ func TestNewDefaultConfig(t *testing.T) {
 	assert.Equal(t, DefaultBatchWait, cfg.BatchWait)
 	assert.Equal(t, DefaultBatchSize, cfg.BatchSize)
 	assert.Equal(t, DefaultTimeout, cfg.Timeout)
-	assert.Equal(t, DefaultMaxRecvMsgSize, cfg.MaxRecvMsgSize)
-	assert.Equal(t, DefaultMaxSendMsgSize, cfg.MaxSendMsgSize)
 	assert.Equal(t, DefaultKeepAlive, cfg.KeepAlive)
 	assert.Equal(t, DefaultKeepAliveTimeout, cfg.KeepAliveTimeout)
 }
@@ -71,8 +69,6 @@ func TestConfigRegisterFlagsWithPrefix(t *testing.T) {
 
 func TestBuildDialOptions(t *testing.T) {
 	cfg := Config{
-		MaxRecvMsgSize:   1024 * 1024,
-		MaxSendMsgSize:   512 * 1024,
 		KeepAlive:        30 * time.Second,
 		KeepAliveTimeout: 5 * time.Second,
 		TLS: TLSConfig{
@@ -88,8 +84,6 @@ func TestBuildDialOptions(t *testing.T) {
 
 func TestBuildDialOptionsWithTLS(t *testing.T) {
 	cfg := Config{
-		MaxRecvMsgSize:   1024 * 1024,
-		MaxSendMsgSize:   512 * 1024,
 		KeepAlive:        30 * time.Second,
 		KeepAliveTimeout: 5 * time.Second,
 		TLS: TLSConfig{
