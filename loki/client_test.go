@@ -16,6 +16,7 @@ import (
 	"github.com/netobserv/loki-client-go/pkg/backoff"
 	"github.com/netobserv/loki-client-go/pkg/httputil"
 	"github.com/netobserv/loki-client-go/pkg/labelutil"
+	"github.com/netobserv/loki-client-go/pkg/metrics"
 	"github.com/netobserv/loki-client-go/pkg/urlutil"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
@@ -68,12 +69,12 @@ func TestClient_Handle(t *testing.T) {
 				},
 			},
 			expectedMetrics: `
-				# HELP promtail_sent_entries_total Number of log entries sent to the ingester.
-				# TYPE promtail_sent_entries_total counter
-				promtail_sent_entries_total{host="__HOST__"} 3.0
-				# HELP promtail_dropped_entries_total Number of log entries dropped because failed to be sent to the ingester after all retries.
-				# TYPE promtail_dropped_entries_total counter
-				promtail_dropped_entries_total{host="__HOST__"} 0
+				# HELP netobserv_loki_sent_entries_total Number of log entries sent to the ingester.
+				# TYPE netobserv_loki_sent_entries_total counter
+				netobserv_loki_sent_entries_total{host="__HOST__",transport="http"} 3.0
+				# HELP netobserv_loki_dropped_entries_total Number of log entries dropped because failed to be sent to the ingester after all retries.
+				# TYPE netobserv_loki_dropped_entries_total counter
+				netobserv_loki_dropped_entries_total{host="__HOST__",transport="http"} 0
 			`,
 		},
 		"batch log entries together until the batch wait time is reached": {
@@ -94,12 +95,12 @@ func TestClient_Handle(t *testing.T) {
 				},
 			},
 			expectedMetrics: `
-				# HELP promtail_sent_entries_total Number of log entries sent to the ingester.
-				# TYPE promtail_sent_entries_total counter
-				promtail_sent_entries_total{host="__HOST__"} 2.0
-				# HELP promtail_dropped_entries_total Number of log entries dropped because failed to be sent to the ingester after all retries.
-				# TYPE promtail_dropped_entries_total counter
-				promtail_dropped_entries_total{host="__HOST__"} 0
+				# HELP netobserv_loki_sent_entries_total Number of log entries sent to the ingester.
+				# TYPE netobserv_loki_sent_entries_total counter
+				netobserv_loki_sent_entries_total{host="__HOST__",transport="http"} 2.0
+				# HELP netobserv_loki_dropped_entries_total Number of log entries dropped because failed to be sent to the ingester after all retries.
+				# TYPE netobserv_loki_dropped_entries_total counter
+				netobserv_loki_dropped_entries_total{host="__HOST__",transport="http"} 0
 			`,
 		},
 		"retry send a batch up to backoff's max retries in case the server responds with a 5xx": {
@@ -123,12 +124,12 @@ func TestClient_Handle(t *testing.T) {
 				},
 			},
 			expectedMetrics: `
-				# HELP promtail_dropped_entries_total Number of log entries dropped because failed to be sent to the ingester after all retries.
-				# TYPE promtail_dropped_entries_total counter
-				promtail_dropped_entries_total{host="__HOST__"} 1.0
-				# HELP promtail_sent_entries_total Number of log entries sent to the ingester.
-				# TYPE promtail_sent_entries_total counter
-				promtail_sent_entries_total{host="__HOST__"} 0
+				# HELP netobserv_loki_dropped_entries_total Number of log entries dropped because failed to be sent to the ingester after all retries.
+				# TYPE netobserv_loki_dropped_entries_total counter
+				netobserv_loki_dropped_entries_total{host="__HOST__",transport="http"} 1.0
+				# HELP netobserv_loki_sent_entries_total Number of log entries sent to the ingester.
+				# TYPE netobserv_loki_sent_entries_total counter
+				netobserv_loki_sent_entries_total{host="__HOST__",transport="http"} 0
 			`,
 		},
 		"do not retry send a batch in case the server responds with a 4xx": {
@@ -144,12 +145,12 @@ func TestClient_Handle(t *testing.T) {
 				},
 			},
 			expectedMetrics: `
-				# HELP promtail_dropped_entries_total Number of log entries dropped because failed to be sent to the ingester after all retries.
-				# TYPE promtail_dropped_entries_total counter
-				promtail_dropped_entries_total{host="__HOST__"} 1.0
-				# HELP promtail_sent_entries_total Number of log entries sent to the ingester.
-				# TYPE promtail_sent_entries_total counter
-				promtail_sent_entries_total{host="__HOST__"} 0
+				# HELP netobserv_loki_dropped_entries_total Number of log entries dropped because failed to be sent to the ingester after all retries.
+				# TYPE netobserv_loki_dropped_entries_total counter
+				netobserv_loki_dropped_entries_total{host="__HOST__",transport="http"} 1.0
+				# HELP netobserv_loki_sent_entries_total Number of log entries sent to the ingester.
+				# TYPE netobserv_loki_sent_entries_total counter
+				netobserv_loki_sent_entries_total{host="__HOST__",transport="http"} 0
 			`,
 		},
 		"do retry sending a batch in case the server responds with a 429": {
@@ -173,12 +174,12 @@ func TestClient_Handle(t *testing.T) {
 				},
 			},
 			expectedMetrics: `
-				# HELP promtail_dropped_entries_total Number of log entries dropped because failed to be sent to the ingester after all retries.
-				# TYPE promtail_dropped_entries_total counter
-				promtail_dropped_entries_total{host="__HOST__"} 1.0
-				# HELP promtail_sent_entries_total Number of log entries sent to the ingester.
-				# TYPE promtail_sent_entries_total counter
-				promtail_sent_entries_total{host="__HOST__"} 0
+				# HELP netobserv_loki_dropped_entries_total Number of log entries dropped because failed to be sent to the ingester after all retries.
+				# TYPE netobserv_loki_dropped_entries_total counter
+				netobserv_loki_dropped_entries_total{host="__HOST__",transport="http"} 1.0
+				# HELP netobserv_loki_sent_entries_total Number of log entries sent to the ingester.
+				# TYPE netobserv_loki_sent_entries_total counter
+				netobserv_loki_sent_entries_total{host="__HOST__",transport="http"} 0
 			`,
 		},
 		"batch log entries together honoring the client tenant ID": {
@@ -195,12 +196,12 @@ func TestClient_Handle(t *testing.T) {
 				},
 			},
 			expectedMetrics: `
-				# HELP promtail_sent_entries_total Number of log entries sent to the ingester.
-				# TYPE promtail_sent_entries_total counter
-				promtail_sent_entries_total{host="__HOST__"} 2.0
-				# HELP promtail_dropped_entries_total Number of log entries dropped because failed to be sent to the ingester after all retries.
-				# TYPE promtail_dropped_entries_total counter
-				promtail_dropped_entries_total{host="__HOST__"} 0
+				# HELP netobserv_loki_sent_entries_total Number of log entries sent to the ingester.
+				# TYPE netobserv_loki_sent_entries_total counter
+				netobserv_loki_sent_entries_total{host="__HOST__",transport="http"} 2.0
+				# HELP netobserv_loki_dropped_entries_total Number of log entries dropped because failed to be sent to the ingester after all retries.
+				# TYPE netobserv_loki_dropped_entries_total counter
+				netobserv_loki_dropped_entries_total{host="__HOST__",transport="http"} 0
 			`,
 		},
 		"batch log entries together honoring the tenant ID overridden while processing the pipeline stages": {
@@ -225,12 +226,12 @@ func TestClient_Handle(t *testing.T) {
 				},
 			},
 			expectedMetrics: `
-				# HELP promtail_sent_entries_total Number of log entries sent to the ingester.
-				# TYPE promtail_sent_entries_total counter
-				promtail_sent_entries_total{host="__HOST__"} 4.0
-				# HELP promtail_dropped_entries_total Number of log entries dropped because failed to be sent to the ingester after all retries.
-				# TYPE promtail_dropped_entries_total counter
-				promtail_dropped_entries_total{host="__HOST__"} 0
+				# HELP netobserv_loki_sent_entries_total Number of log entries sent to the ingester.
+				# TYPE netobserv_loki_sent_entries_total counter
+				netobserv_loki_sent_entries_total{host="__HOST__",transport="http"} 4.0
+				# HELP netobserv_loki_dropped_entries_total Number of log entries dropped because failed to be sent to the ingester after all retries.
+				# TYPE netobserv_loki_dropped_entries_total counter
+				netobserv_loki_dropped_entries_total{host="__HOST__",transport="http"} 0
 			`,
 		},
 	}
@@ -238,8 +239,8 @@ func TestClient_Handle(t *testing.T) {
 	for testName, testData := range tests {
 		t.Run(testName, func(t *testing.T) {
 			// Reset metrics
-			sentEntries.Reset()
-			droppedEntries.Reset()
+			metrics.SentEntries.Reset()
+			metrics.DroppedEntries.Reset()
 
 			// Create a buffer channel where we do enqueue received requests
 			receivedReqsChan := make(chan receivedReq, 10)
@@ -301,7 +302,7 @@ func TestClient_Handle(t *testing.T) {
 			require.ElementsMatch(t, testData.expectedReqs, receivedReqs)
 
 			expectedMetrics := strings.Replace(testData.expectedMetrics, "__HOST__", serverURL.Host, -1)
-			err = testutil.GatherAndCompare(prometheus.DefaultGatherer, strings.NewReader(expectedMetrics), "promtail_sent_entries_total", "promtail_dropped_entries_total")
+			err = testutil.GatherAndCompare(prometheus.DefaultGatherer, strings.NewReader(expectedMetrics), "netobserv_loki_sent_entries_total", "netobserv_loki_dropped_entries_total")
 			assert.NoError(t, err)
 		})
 	}
