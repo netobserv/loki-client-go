@@ -70,7 +70,6 @@ func TestBuildDialOptions(t *testing.T) {
 	cfg := Config{
 		KeepAlive:        30 * time.Second,
 		KeepAliveTimeout: 5 * time.Second,
-		// No TLS configured - should use insecure credentials
 	}
 
 	opts, err := cfg.BuildDialOptions()
