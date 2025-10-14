@@ -1,15 +1,12 @@
 package grpc
 
 import (
-	"crypto/tls"
-	"crypto/x509"
 	"flag"
-	"fmt"
-	"os"
 	"time"
 
 	"github.com/netobserv/loki-client-go/pkg/backoff"
 	"github.com/netobserv/loki-client-go/pkg/labelutil"
+	promConfig "github.com/prometheus/common/config"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
@@ -38,10 +35,10 @@ type Config struct {
 	BatchSize int           `yaml:"batch_size"`
 
 	// Connection configuration
-	Timeout        time.Duration `yaml:"timeout"`
+	Timeout time.Duration `yaml:"timeout"`
 
-	// TLS configuration
-	TLS TLSConfig `yaml:"tls"`
+	// TLS configuration (uses Prometheus common TLSConfig for consistency)
+	TLS promConfig.TLSConfig `yaml:"tls"`
 
 	// Keep alive configuration
 	KeepAlive        time.Duration `yaml:"keep_alive"`
@@ -55,27 +52,6 @@ type Config struct {
 
 	// Tenant ID for multi-tenant mode (empty string means single tenant)
 	TenantID string `yaml:"tenant_id"`
-}
-
-// TLSConfig contains TLS configuration for GRPC client
-type TLSConfig struct {
-	// Enable TLS
-	Enabled bool `yaml:"enabled"`
-
-	// Path to certificate file
-	CertFile string `yaml:"cert_file"`
-
-	// Path to key file
-	KeyFile string `yaml:"key_file"`
-
-	// Path to CA file
-	CAFile string `yaml:"ca_file"`
-
-	// Server name for certificate verification
-	ServerName string `yaml:"server_name"`
-
-	// Skip certificate verification (insecure)
-	InsecureSkipVerify bool `yaml:"insecure_skip_verify"`
 }
 
 // NewDefaultConfig creates a default configuration for a given GRPC server address.
@@ -103,7 +79,6 @@ func (c *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 
 	f.DurationVar(&c.Timeout, prefix+"grpc.timeout", DefaultTimeout, "Maximum time to wait for server to respond to a request")
 
-	f.BoolVar(&c.TLS.Enabled, prefix+"grpc.tls.enabled", false, "Enable TLS")
 	f.StringVar(&c.TLS.CertFile, prefix+"grpc.tls.cert-file", "", "Path to client certificate file")
 	f.StringVar(&c.TLS.KeyFile, prefix+"grpc.tls.key-file", "", "Path to client key file")
 	f.StringVar(&c.TLS.CAFile, prefix+"grpc.tls.ca-file", "", "Path to CA certificate file")
@@ -125,7 +100,6 @@ func (c *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 func (c *Config) BuildDialOptions() ([]grpc.DialOption, error) {
 	var opts []grpc.DialOption
 
-
 	// Keep alive settings
 	opts = append(opts, grpc.WithKeepaliveParams(keepalive.ClientParameters{
 		Time:                c.KeepAlive,
@@ -133,32 +107,15 @@ func (c *Config) BuildDialOptions() ([]grpc.DialOption, error) {
 		PermitWithoutStream: true,
 	}))
 
-	// TLS configuration
-	if c.TLS.Enabled {
-		tlsConfig := &tls.Config{
-			ServerName:         c.TLS.ServerName,
-			InsecureSkipVerify: c.TLS.InsecureSkipVerify,
-		}
+	// TLS configuration - check if any TLS field is set to determine if TLS should be enabled
+	tlsEnabled := c.TLS.CAFile != "" || c.TLS.CertFile != "" || c.TLS.KeyFile != "" ||
+		c.TLS.CA != "" || c.TLS.Cert != "" || string(c.TLS.Key) != ""
 
-		// Load CA certificate if specified
-		if c.TLS.CAFile != "" {
-			caCert, err := os.ReadFile(c.TLS.CAFile)
-			if err != nil {
-				return nil, fmt.Errorf("failed to read CA certificate file %s: %w", c.TLS.CAFile, err)
-			}
-			caCertPool := x509.NewCertPool()
-			if !caCertPool.AppendCertsFromPEM(caCert) {
-				return nil, fmt.Errorf("failed to parse CA certificate from %s", c.TLS.CAFile)
-			}
-			tlsConfig.RootCAs = caCertPool
-		}
-
-		if c.TLS.CertFile != "" && c.TLS.KeyFile != "" {
-			cert, err := tls.LoadX509KeyPair(c.TLS.CertFile, c.TLS.KeyFile)
-			if err != nil {
-				return nil, err
-			}
-			tlsConfig.Certificates = []tls.Certificate{cert}
+	if tlsEnabled {
+		// Use Prometheus common config to build TLS config
+		tlsConfig, err := promConfig.NewTLSConfig(&c.TLS)
+		if err != nil {
+			return nil, err
 		}
 
 		creds := credentials.NewTLS(tlsConfig)

@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	promConfig "github.com/prometheus/common/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -33,7 +34,6 @@ func TestConfigRegisterFlags(t *testing.T) {
 		"-grpc.batch-wait=5s",
 		"-grpc.batch-size-bytes=2048",
 		"-grpc.timeout=30s",
-		"-grpc.tls.enabled=true",
 		"-grpc.tls.server-name=loki.example.com",
 		"-grpc.tenant-id=test-tenant",
 	}
@@ -45,7 +45,6 @@ func TestConfigRegisterFlags(t *testing.T) {
 	assert.Equal(t, 5*time.Second, cfg.BatchWait)
 	assert.Equal(t, 2048, cfg.BatchSize)
 	assert.Equal(t, 30*time.Second, cfg.Timeout)
-	assert.True(t, cfg.TLS.Enabled)
 	assert.Equal(t, "loki.example.com", cfg.TLS.ServerName)
 	assert.Equal(t, "test-tenant", cfg.TenantID)
 }
@@ -71,10 +70,6 @@ func TestBuildDialOptions(t *testing.T) {
 	cfg := Config{
 		KeepAlive:        30 * time.Second,
 		KeepAliveTimeout: 5 * time.Second,
-		TLS: TLSConfig{
-			Enabled:            false,
-			InsecureSkipVerify: true,
-		},
 	}
 
 	opts, err := cfg.BuildDialOptions()
@@ -86,8 +81,7 @@ func TestBuildDialOptionsWithTLS(t *testing.T) {
 	cfg := Config{
 		KeepAlive:        30 * time.Second,
 		KeepAliveTimeout: 5 * time.Second,
-		TLS: TLSConfig{
-			Enabled:            true,
+		TLS: promConfig.TLSConfig{
 			ServerName:         "loki.example.com",
 			InsecureSkipVerify: true,
 		},
