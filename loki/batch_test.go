@@ -54,7 +54,7 @@ func TestBatch_add(t *testing.T) {
 				b.add(entry)
 			}
 
-			assert.Equal(t, testData.expectedSizeBytes, b.sizeBytes())
+			assert.Equal(t, testData.expectedSizeBytes, b.bytes)
 		})
 	}
 }

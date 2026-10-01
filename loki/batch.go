@@ -53,11 +53,6 @@ func (b *batch) add(entry entry) {
 	}
 }
 
-// sizeBytes returns the current batch size in bytes
-func (b *batch) sizeBytes() int {
-	return b.bytes
-}
-
 // sizeBytesAfter returns the size of the batch after the input entry
 // will be added to the batch itself
 // nolint:gocritic

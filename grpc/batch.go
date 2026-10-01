@@ -59,11 +59,6 @@ func (b *batch) add(entry entry) {
 	}
 }
 
-// sizeBytes returns the current batch size in bytes
-func (b *batch) sizeBytes() int {
-	return b.bytes
-}
-
 // sizeBytesAfter returns the size of the batch after the input entry
 // will be added to the batch itself
 // nolint:gocritic
@@ -89,23 +84,4 @@ func (b *batch) createPushRequest() (*push.PushRequest, int) {
 	}
 
 	return req, entriesCount
-}
-
-// isEmpty returns true if the batch has no entries
-func (b *batch) isEmpty() bool {
-	return len(b.streams) == 0
-}
-
-// streamCount returns the number of streams in the batch
-func (b *batch) streamCount() int {
-	return len(b.streams)
-}
-
-// entryCount returns the total number of entries across all streams
-func (b *batch) entryCount() int {
-	count := 0
-	for _, stream := range b.streams {
-		count += len(stream.Entries)
-	}
-	return count
 }

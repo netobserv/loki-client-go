@@ -17,9 +17,8 @@ func TestNewBatch(t *testing.T) {
 	b := newBatch(tenantID)
 	assert.Equal(t, tenantID, b.tenantID)
 	assert.Equal(t, 0, b.bytes)
-	assert.True(t, b.isEmpty())
-	assert.Equal(t, 0, b.streamCount())
-	assert.Equal(t, 0, b.entryCount())
+	assert.Empty(t, b.streams)
+	assert.Equal(t, 0, entryCount(b))
 
 	// Test batch with initial entries
 	entry1 := entry{
@@ -43,9 +42,9 @@ func TestNewBatch(t *testing.T) {
 	b2 := newBatch(tenantID, entry1, entry2)
 	assert.Equal(t, tenantID, b2.tenantID)
 	assert.Equal(t, len("test log line 1")+len("test log line 2"), b2.bytes)
-	assert.False(t, b2.isEmpty())
-	assert.Equal(t, 1, b2.streamCount()) // Same labels, so same stream
-	assert.Equal(t, 2, b2.entryCount())
+	assert.NotEmpty(t, b2.streams)
+	assert.Len(t, b2.streams, 1) // Same labels, so same stream
+	assert.Equal(t, 2, entryCount(b2))
 }
 
 func TestBatchAdd(t *testing.T) {
@@ -64,16 +63,16 @@ func TestBatchAdd(t *testing.T) {
 	// Add first entry
 	b.add(entry)
 	assert.Equal(t, len("test log line"), b.bytes)
-	assert.Equal(t, 1, b.streamCount())
-	assert.Equal(t, 1, b.entryCount())
+	assert.Len(t, b.streams, 1)
+	assert.Equal(t, 1, entryCount(b))
 
 	// Add entry with same labels (should go to same stream)
 	entry2 := entry
 	entry2.Line = "another line"
 	b.add(entry2)
 	assert.Equal(t, len("test log line")+len("another line"), b.bytes)
-	assert.Equal(t, 1, b.streamCount())
-	assert.Equal(t, 2, b.entryCount())
+	assert.Len(t, b.streams, 1)
+	assert.Equal(t, 2, entryCount(b))
 
 	// Add entry with different labels (should create new stream)
 	entry3 := entry
@@ -81,8 +80,8 @@ func TestBatchAdd(t *testing.T) {
 	entry3.Line = "different stream"
 	b.add(entry3)
 	assert.Equal(t, len("test log line")+len("another line")+len("different stream"), b.bytes)
-	assert.Equal(t, 2, b.streamCount())
-	assert.Equal(t, 3, b.entryCount())
+	assert.Len(t, b.streams, 2)
+	assert.Equal(t, 3, entryCount(b))
 }
 
 func TestBatchSizeBytes(t *testing.T) {
@@ -98,13 +97,13 @@ func TestBatchSizeBytes(t *testing.T) {
 		},
 	}
 
-	assert.Equal(t, 0, b.sizeBytes())
+	assert.Equal(t, 0, b.bytes)
 
 	expectedSize := len("test")
 	assert.Equal(t, expectedSize, b.sizeBytesAfter(entry))
 
 	b.add(entry)
-	assert.Equal(t, expectedSize, b.sizeBytes())
+	assert.Equal(t, expectedSize, b.bytes)
 }
 
 func TestBatchAge(t *testing.T) {
@@ -182,7 +181,7 @@ func TestCreatePushRequest(t *testing.T) {
 func TestBatchIsEmpty(t *testing.T) {
 	tenantID := "test-tenant"
 	b := newBatch(tenantID)
-	assert.True(t, b.isEmpty())
+	assert.Empty(t, b.streams)
 
 	entry := entry{
 		tenantID: tenantID,
@@ -194,5 +193,14 @@ func TestBatchIsEmpty(t *testing.T) {
 	}
 
 	b.add(entry)
-	assert.False(t, b.isEmpty())
+	assert.NotEmpty(t, b.streams)
+}
+
+// entryCount returns the total number of entries across all streams
+func entryCount(b *batch) int {
+	count := 0
+	for _, stream := range b.streams {
+		count += len(stream.Entries)
+	}
+	return count
 }
