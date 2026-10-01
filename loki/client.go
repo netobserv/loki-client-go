@@ -99,7 +99,18 @@ func NewWithLogger(cfg Config, logger log.Logger) (*Client, error) {
 		return nil, err
 	}
 
-	c.client, err = config.NewClientFromConfig(cfg.Client, "promtail", config.WithKeepAlivesDisabled(), config.WithHTTP2Disabled())
+	// Both the option and the client config have to agree before the transport
+	// negotiates HTTP/2, so mirror Client.EnableHTTP2 here. Callers that never
+	// set it keep the previous behaviour of HTTP/2 and keep-alives both off.
+	var opts []config.HTTPClientOption
+	if !cfg.EnableKeepAlives {
+		opts = append(opts, config.WithKeepAlivesDisabled())
+	}
+	if !cfg.Client.EnableHTTP2 {
+		opts = append(opts, config.WithHTTP2Disabled())
+	}
+
+	c.client, err = config.NewClientFromConfig(cfg.Client, "loki-client", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -253,6 +264,10 @@ func (c *Client) send(ctx context.Context, tenantID string, buf []byte) (int, er
 			line = scanner.Text()
 		}
 		err = fmt.Errorf("server returned HTTP status %s (%d): %s", resp.Status, resp.StatusCode, line)
+	} else {
+		// A success body is normally empty, but an unread one would stop the
+		// transport from reusing the connection when keep-alives are enabled.
+		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, maxErrMsgLen))
 	}
 	return resp.StatusCode, err
 }

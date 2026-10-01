@@ -1,10 +1,13 @@
 package loki
 
 import (
+	"context"
 	"math"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -303,6 +306,58 @@ func TestClient_Handle(t *testing.T) {
 			expectedMetrics := strings.Replace(testData.expectedMetrics, "__HOST__", serverURL.Host, -1)
 			err = testutil.GatherAndCompare(prometheus.DefaultGatherer, strings.NewReader(expectedMetrics), "netobserv_loki_sent_entries_total", "netobserv_loki_dropped_entries_total")
 			assert.NoError(t, err)
+		})
+	}
+}
+
+func TestClient_KeepAlives(t *testing.T) {
+	for _, testData := range []struct {
+		name      string
+		enable    bool
+		wantConns int
+	}{
+		{"disabled by default, so each push gets its own connection", false, 2},
+		{"enabled, so both pushes share one connection", true, 1},
+	} {
+		t.Run(testData.name, func(t *testing.T) {
+			var mu sync.Mutex
+			conns := map[net.Conn]struct{}{}
+
+			server := httptest.NewUnstartedServer(http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
+				rw.WriteHeader(http.StatusNoContent)
+			}))
+			server.Config.ConnState = func(c net.Conn, state http.ConnState) {
+				if state == http.StateNew {
+					mu.Lock()
+					conns[c] = struct{}{}
+					mu.Unlock()
+				}
+			}
+			server.Start()
+			defer server.Close()
+
+			serverURL := urlutil.URLValue{}
+			require.NoError(t, serverURL.Set(server.URL))
+
+			c, err := NewWithLogger(Config{
+				URL:              serverURL,
+				BatchWait:        time.Hour, // never let the batch ticker push on its own
+				BatchSize:        math.MaxInt32,
+				Timeout:          time.Second,
+				EnableKeepAlives: testData.enable,
+			}, log.NewNopLogger())
+			require.NoError(t, err)
+			defer c.Stop()
+
+			for i := 0; i < 2; i++ {
+				status, err := c.send(context.Background(), "", []byte("payload"))
+				require.NoError(t, err)
+				require.Equal(t, http.StatusNoContent, status)
+			}
+
+			mu.Lock()
+			defer mu.Unlock()
+			require.Len(t, conns, testData.wantConns)
 		})
 	}
 }
