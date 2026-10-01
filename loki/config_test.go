@@ -44,7 +44,7 @@ func Test_Config(t *testing.T) {
 				URL: urlutil.URLValue{
 					URL: u,
 				},
-				BackoffConfig: backoff.BackoffConfig{
+				BackoffConfig: backoff.Config{
 					MaxBackoff: MaxBackoff,
 					MaxRetries: MaxRetries,
 					MinBackoff: MinBackoff,
@@ -60,7 +60,7 @@ func Test_Config(t *testing.T) {
 				URL: urlutil.URLValue{
 					URL: u,
 				},
-				BackoffConfig: backoff.BackoffConfig{
+				BackoffConfig: backoff.Config{
 					MaxBackoff: 1 * time.Minute,
 					MaxRetries: 20,
 					MinBackoff: 5 * time.Second,

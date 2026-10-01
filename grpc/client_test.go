@@ -4,7 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/kit/log"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -28,8 +27,7 @@ func TestNewWithInvalidAddress(t *testing.T) {
 		Timeout:       DefaultTimeout,
 	}
 
-	logger := log.NewNopLogger()
-	_, err := NewWithLogger(cfg, logger)
+	_, err := New(&cfg)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "server address")
 }
@@ -44,7 +42,7 @@ func TestGetTenantID(t *testing.T) {
 	}
 
 	client := &Client{
-		cfg: cfg,
+		cfg: &cfg,
 	}
 
 	// Test with no tenant override
@@ -104,7 +102,7 @@ func TestClientHandle(t *testing.T) {
 	}
 
 	client := &Client{
-		cfg:            cfg,
+		cfg:            &cfg,
 		entries:        make(chan entry, 10),
 		quit:           make(chan struct{}),
 		externalLabels: model.LabelSet{"external": "label"},
@@ -141,7 +139,7 @@ func TestClientHandleWithTenantOverride(t *testing.T) {
 	}
 
 	client := &Client{
-		cfg:     cfg,
+		cfg:     &cfg,
 		entries: make(chan entry, 10),
 		quit:    make(chan struct{}),
 	}

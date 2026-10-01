@@ -11,7 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/kit/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -263,13 +262,13 @@ func TestClient_Handle(t *testing.T) {
 				BatchWait:      testData.clientBatchWait,
 				BatchSize:      testData.clientBatchSize,
 				Client:         config.HTTPClientConfig{},
-				BackoffConfig:  backoff.BackoffConfig{MinBackoff: 1 * time.Millisecond, MaxBackoff: 2 * time.Millisecond, MaxRetries: testData.clientMaxRetries},
+				BackoffConfig:  backoff.Config{MinBackoff: 1 * time.Millisecond, MaxBackoff: 2 * time.Millisecond, MaxRetries: testData.clientMaxRetries},
 				ExternalLabels: labelutil.LabelSet{},
 				Timeout:        1 * time.Second,
 				TenantID:       testData.clientTenantID,
 			}
 
-			c, err := NewWithLogger(cfg, log.NewNopLogger())
+			c, err := New(&cfg)
 			require.NoError(t, err)
 
 			// Send all the input log entries
@@ -303,7 +302,7 @@ func TestClient_Handle(t *testing.T) {
 			// the exact order which is not guaranteed in case of multi-tenant
 			require.ElementsMatch(t, testData.expectedReqs, receivedReqs)
 
-			expectedMetrics := strings.Replace(testData.expectedMetrics, "__HOST__", serverURL.Host, -1)
+			expectedMetrics := strings.ReplaceAll(testData.expectedMetrics, "__HOST__", serverURL.Host)
 			err = testutil.GatherAndCompare(prometheus.DefaultGatherer, strings.NewReader(expectedMetrics), "netobserv_loki_sent_entries_total", "netobserv_loki_dropped_entries_total")
 			assert.NoError(t, err)
 		})
@@ -339,13 +338,13 @@ func TestClient_KeepAlives(t *testing.T) {
 			serverURL := urlutil.URLValue{}
 			require.NoError(t, serverURL.Set(server.URL))
 
-			c, err := NewWithLogger(Config{
+			c, err := New(&Config{
 				URL:              serverURL,
 				BatchWait:        time.Hour, // never let the batch ticker push on its own
 				BatchSize:        math.MaxInt32,
 				Timeout:          time.Second,
 				EnableKeepAlives: testData.enable,
-			}, log.NewNopLogger())
+			})
 			require.NoError(t, err)
 			defer c.Stop()
 

@@ -28,7 +28,7 @@ type Config struct {
 
 	Client config.HTTPClientConfig `yaml:",inline"`
 
-	BackoffConfig backoff.BackoffConfig `yaml:"backoff_config"`
+	BackoffConfig backoff.Config `yaml:"backoff_config"`
 	// The labels to add to any time series or alerts when communicating with loki
 	ExternalLabels labelutil.LabelSet `yaml:"external_labels,omitempty"`
 	Timeout        time.Duration      `yaml:"timeout"`
@@ -94,7 +94,7 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	} else {
 		// force sane defaults.
 		cfg = raw{
-			BackoffConfig: backoff.BackoffConfig{
+			BackoffConfig: backoff.Config{
 				MaxBackoff: MaxBackoff,
 				MaxRetries: MaxRetries,
 				MinBackoff: MinBackoff,

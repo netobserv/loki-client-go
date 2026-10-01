@@ -1,10 +1,8 @@
-# Loki Go client (Experimental. DO NOT USE IT)
+# Loki Go client
 
 An HTTP client to send logs to Loki server
 
-## Install
-
-## Usage
+The code base originates from Grafana experimental loki client. Now maintained by the NetObserv team.
 
 ## License
 

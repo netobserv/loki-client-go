@@ -139,7 +139,7 @@ func SerializeProtoResponse(w http.ResponseWriter, resp proto.Message, compressi
 	data, err := proto.Marshal(resp)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return fmt.Errorf("error marshaling proto response: %v", err)
+		return fmt.Errorf("error marshaling proto response: %w", err)
 	}
 
 	switch compression {
@@ -158,7 +158,7 @@ func SerializeProtoResponse(w http.ResponseWriter, resp proto.Message, compressi
 
 	if _, err := w.Write(data); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return fmt.Errorf("error sending proto response: %v", err)
+		return fmt.Errorf("error sending proto response: %w", err)
 	}
 	return nil
 }

@@ -47,8 +47,6 @@ func TestBatch_add(t *testing.T) {
 	}
 
 	for testName, testData := range tests {
-		testData := testData
-
 		t.Run(testName, func(t *testing.T) {
 			b := newBatch()
 
@@ -96,8 +94,6 @@ func TestBatch_encode(t *testing.T) {
 	}
 
 	for testName, testData := range tests {
-		testData := testData
-
 		t.Run(testName, func(t *testing.T) {
 			t.Parallel()
 
