@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/netobserv/loki-client-go/pkg/logproto"
+	"github.com/grafana/loki/pkg/push"
 )
 
 func TestBatch_add(t *testing.T) {
@@ -47,8 +47,6 @@ func TestBatch_add(t *testing.T) {
 	}
 
 	for testName, testData := range tests {
-		testData := testData
-
 		t.Run(testName, func(t *testing.T) {
 			b := newBatch()
 
@@ -56,7 +54,7 @@ func TestBatch_add(t *testing.T) {
 				b.add(entry)
 			}
 
-			assert.Equal(t, testData.expectedSizeBytes, b.sizeBytes())
+			assert.Equal(t, testData.expectedSizeBytes, b.bytes)
 		})
 	}
 }
@@ -96,8 +94,6 @@ func TestBatch_encode(t *testing.T) {
 	}
 
 	for testName, testData := range tests {
-		testData := testData
-
 		t.Run(testName, func(t *testing.T) {
 			t.Parallel()
 
@@ -120,8 +116,8 @@ func TestHashCollisions(t *testing.T) {
 	const entriesPerLabel = 10
 
 	for i := 0; i < entriesPerLabel; i++ {
-		b.add(entry{labels: ls1, Entry: logproto.Entry{Timestamp: time.Now(), Line: fmt.Sprintf("line %d", i)}})
-		b.add(entry{labels: ls2, Entry: logproto.Entry{Timestamp: time.Now(), Line: fmt.Sprintf("line %d", i)}})
+		b.add(entry{labels: ls1, Entry: push.Entry{Timestamp: time.Now(), Line: fmt.Sprintf("line %d", i)}})
+		b.add(entry{labels: ls2, Entry: push.Entry{Timestamp: time.Now(), Line: fmt.Sprintf("line %d", i)}})
 	}
 
 	// make sure that colliding labels are stored properly as independent streams

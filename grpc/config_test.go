@@ -94,7 +94,7 @@ func TestBuildDialOptionsWithTLS(t *testing.T) {
 
 func TestConfigUnmarshalYAML(t *testing.T) {
 	var cfg Config
-	err := cfg.UnmarshalYAML(func(v interface{}) error {
+	err := cfg.UnmarshalYAML(func(_ any) error {
 		// This is a simplified test - in real usage, this would be called by yaml.Unmarshal
 		return nil
 	})

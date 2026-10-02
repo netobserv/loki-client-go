@@ -1,7 +1,7 @@
 package helpers
 
 import (
-	"io/ioutil"
+	"os"
 
 	"github.com/pkg/errors"
 	yaml "gopkg.in/yaml.v2"
@@ -9,7 +9,7 @@ import (
 
 // LoadConfig read YAML-formatted config from filename into cfg.
 func LoadConfig(filename string, cfg interface{}) error {
-	buf, err := ioutil.ReadFile(filename)
+	buf, err := os.ReadFile(filename)
 	if err != nil {
 		return errors.Wrap(err, "Error reading config file")
 	}

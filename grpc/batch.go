@@ -3,7 +3,7 @@ package grpc
 import (
 	"time"
 
-	"github.com/netobserv/loki-client-go/pkg/logproto"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
 )
 
@@ -11,13 +11,13 @@ import (
 type entry struct {
 	tenantID string
 	labels   model.LabelSet
-	logproto.Entry
+	push.Entry
 }
 
 // batch holds pending log streams waiting to be sent to Loki via GRPC.
 // Similar to HTTP batch but optimized for GRPC operations.
 type batch struct {
-	streams   map[string]*logproto.Stream
+	streams   map[string]*push.Stream
 	bytes     int
 	createdAt time.Time
 	tenantID  string // GRPC batches are per-tenant for connection management
@@ -26,7 +26,7 @@ type batch struct {
 // newBatch creates a new batch for a specific tenant
 func newBatch(tenantID string, entries ...entry) *batch {
 	b := &batch{
-		streams:   map[string]*logproto.Stream{},
+		streams:   map[string]*push.Stream{},
 		bytes:     0,
 		createdAt: time.Now(),
 		tenantID:  tenantID,
@@ -41,6 +41,7 @@ func newBatch(tenantID string, entries ...entry) *batch {
 }
 
 // add an entry to the batch
+// nolint:gocritic
 func (b *batch) add(entry entry) {
 	b.bytes += len(entry.Line)
 
@@ -52,19 +53,15 @@ func (b *batch) add(entry entry) {
 	}
 
 	// Add the entry as a new stream
-	b.streams[labels] = &logproto.Stream{
+	b.streams[labels] = &push.Stream{
 		Labels:  labels,
-		Entries: []logproto.Entry{entry.Entry},
+		Entries: []push.Entry{entry.Entry},
 	}
-}
-
-// sizeBytes returns the current batch size in bytes
-func (b *batch) sizeBytes() int {
-	return b.bytes
 }
 
 // sizeBytesAfter returns the size of the batch after the input entry
 // will be added to the batch itself
+// nolint:gocritic
 func (b *batch) sizeBytesAfter(entry entry) int {
 	return b.bytes + len(entry.Line)
 }
@@ -75,9 +72,9 @@ func (b *batch) age() time.Duration {
 }
 
 // createPushRequest creates a push request from the batch
-func (b *batch) createPushRequest() (*logproto.PushRequest, int) {
-	req := &logproto.PushRequest{
-		Streams: make([]logproto.Stream, 0, len(b.streams)),
+func (b *batch) createPushRequest() (*push.PushRequest, int) {
+	req := &push.PushRequest{
+		Streams: make([]push.Stream, 0, len(b.streams)),
 	}
 
 	entriesCount := 0
@@ -87,23 +84,4 @@ func (b *batch) createPushRequest() (*logproto.PushRequest, int) {
 	}
 
 	return req, entriesCount
-}
-
-// isEmpty returns true if the batch has no entries
-func (b *batch) isEmpty() bool {
-	return len(b.streams) == 0
-}
-
-// streamCount returns the number of streams in the batch
-func (b *batch) streamCount() int {
-	return len(b.streams)
-}
-
-// entryCount returns the total number of entries across all streams
-func (b *batch) entryCount() int {
-	count := 0
-	for _, stream := range b.streams {
-		count += len(stream.Entries)
-	}
-	return count
 }
