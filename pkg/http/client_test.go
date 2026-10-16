@@ -1,7 +1,9 @@
-package loki
+package http
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"math"
 	"net"
 	"net/http"
@@ -41,17 +43,45 @@ type receivedReq struct {
 	pushReq  push.PushRequest
 }
 
+type sendCallbacks struct {
+	success     int
+	errors      int
+	retries     int
+	lastError   error
+	lastAttempt int
+}
+
+func (s *sendCallbacks) OnSuccess() {
+	s.success++
+}
+
+func (s *sendCallbacks) OnError(err error) {
+	s.errors++
+	s.lastError = err
+}
+
+func (s *sendCallbacks) OnRetry(err error, attempt int) {
+	s.retries++
+	s.lastError = err
+	s.lastAttempt = attempt
+}
+
+func wrappedError(msg string) error {
+	return fmt.Errorf("error sending batch via HTTP: %w", errors.New(msg))
+}
+
 func TestClient_Handle(t *testing.T) {
 	tests := map[string]struct {
-		clientBatchSize      int
-		clientBatchWait      time.Duration
-		clientMaxRetries     int
-		clientTenantID       string
-		serverResponseStatus int
-		inputEntries         []entry
-		inputDelay           time.Duration
-		expectedReqs         []receivedReq
-		expectedMetrics      string
+		clientBatchSize        int
+		clientBatchWait        time.Duration
+		clientMaxRetries       int
+		clientTenantID         string
+		serverResponseStatus   int
+		inputEntries           []entry
+		inputDelay             time.Duration
+		expectedReqs           []receivedReq
+		expectedMetrics        string
+		expectedCallbacksState sendCallbacks
 	}{
 		"batch log entries together until the batch size is reached": {
 			clientBatchSize:      10,
@@ -77,6 +107,9 @@ func TestClient_Handle(t *testing.T) {
 				# TYPE netobserv_loki_dropped_entries_total counter
 				netobserv_loki_dropped_entries_total{host="__HOST__",transport="http"} 0
 			`,
+			expectedCallbacksState: sendCallbacks{
+				success: 2,
+			},
 		},
 		"batch log entries together until the batch wait time is reached": {
 			clientBatchSize:      10,
@@ -103,6 +136,9 @@ func TestClient_Handle(t *testing.T) {
 				# TYPE netobserv_loki_dropped_entries_total counter
 				netobserv_loki_dropped_entries_total{host="__HOST__",transport="http"} 0
 			`,
+			expectedCallbacksState: sendCallbacks{
+				success: 2,
+			},
 		},
 		"retry send a batch up to backoff's max retries in case the server responds with a 5xx": {
 			clientBatchSize:      10,
@@ -132,6 +168,12 @@ func TestClient_Handle(t *testing.T) {
 				# TYPE netobserv_loki_sent_entries_total counter
 				netobserv_loki_sent_entries_total{host="__HOST__",transport="http"} 0
 			`,
+			expectedCallbacksState: sendCallbacks{
+				retries:     3,
+				errors:      1,
+				lastAttempt: 2,
+				lastError:   wrappedError("server returned HTTP status 500 Internal Server Error (500): "),
+			},
 		},
 		"do not retry send a batch in case the server responds with a 4xx": {
 			clientBatchSize:      10,
@@ -153,6 +195,10 @@ func TestClient_Handle(t *testing.T) {
 				# TYPE netobserv_loki_sent_entries_total counter
 				netobserv_loki_sent_entries_total{host="__HOST__",transport="http"} 0
 			`,
+			expectedCallbacksState: sendCallbacks{
+				errors:    1,
+				lastError: wrappedError("server returned HTTP status 400 Bad Request (400): "),
+			},
 		},
 		"do retry sending a batch in case the server responds with a 429": {
 			clientBatchSize:      10,
@@ -182,6 +228,12 @@ func TestClient_Handle(t *testing.T) {
 				# TYPE netobserv_loki_sent_entries_total counter
 				netobserv_loki_sent_entries_total{host="__HOST__",transport="http"} 0
 			`,
+			expectedCallbacksState: sendCallbacks{
+				retries:     3,
+				lastAttempt: 2,
+				errors:      1,
+				lastError:   wrappedError("server returned HTTP status 429 Too Many Requests (429): "),
+			},
 		},
 		"batch log entries together honoring the client tenant ID": {
 			clientBatchSize:      100,
@@ -204,6 +256,9 @@ func TestClient_Handle(t *testing.T) {
 				# TYPE netobserv_loki_dropped_entries_total counter
 				netobserv_loki_dropped_entries_total{host="__HOST__",transport="http"} 0
 			`,
+			expectedCallbacksState: sendCallbacks{
+				success: 1,
+			},
 		},
 		"batch log entries together honoring the tenant ID overridden while processing the pipeline stages": {
 			clientBatchSize:      100,
@@ -234,6 +289,9 @@ func TestClient_Handle(t *testing.T) {
 				# TYPE netobserv_loki_dropped_entries_total counter
 				netobserv_loki_dropped_entries_total{host="__HOST__",transport="http"} 0
 			`,
+			expectedCallbacksState: sendCallbacks{
+				success: 3,
+			},
 		},
 	}
 
@@ -268,7 +326,7 @@ func TestClient_Handle(t *testing.T) {
 				TenantID:       testData.clientTenantID,
 			}
 
-			c, err := New(&cfg)
+			c, err := NewWithSendCallbacks(&cfg, &sendCallbacks{})
 			require.NoError(t, err)
 
 			// Send all the input log entries
@@ -305,6 +363,8 @@ func TestClient_Handle(t *testing.T) {
 			expectedMetrics := strings.ReplaceAll(testData.expectedMetrics, "__HOST__", serverURL.Host)
 			err = testutil.GatherAndCompare(prometheus.DefaultGatherer, strings.NewReader(expectedMetrics), "netobserv_loki_sent_entries_total", "netobserv_loki_dropped_entries_total")
 			assert.NoError(t, err)
+
+			assert.Equal(t, &testData.expectedCallbacksState, c.onSend)
 		})
 	}
 }

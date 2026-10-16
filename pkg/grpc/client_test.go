@@ -6,31 +6,9 @@ import (
 
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
-
-func TestClientNewDefaultConfig(t *testing.T) {
-	serverAddr := "localhost:9095"
-
-	cfg, err := NewDefaultConfig(serverAddr)
-	require.NoError(t, err)
-	assert.Equal(t, serverAddr, cfg.ServerAddress)
-}
-
-func TestNewWithInvalidAddress(t *testing.T) {
-	cfg := Config{
-		ServerAddress: "", // Invalid - empty address
-		BatchWait:     DefaultBatchWait,
-		BatchSize:     DefaultBatchSize,
-		Timeout:       DefaultTimeout,
-	}
-
-	_, err := New(&cfg)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "server address")
-}
 
 func TestGetTenantID(t *testing.T) {
 	cfg := Config{

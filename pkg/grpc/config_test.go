@@ -100,3 +100,16 @@ func TestConfigUnmarshalYAML(t *testing.T) {
 	})
 	require.NoError(t, err)
 }
+
+func TestNewWithInvalidAddress(t *testing.T) {
+	cfg := Config{
+		ServerAddress: "", // Invalid - empty address
+		BatchWait:     DefaultBatchWait,
+		BatchSize:     DefaultBatchSize,
+		Timeout:       DefaultTimeout,
+	}
+
+	_, err := New(&cfg)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "server address")
+}
